@@ -1,16 +1,50 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
+import useInterview from '../hooks/useInterview';
 
 const InterviewConfig = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { start, loading, error } = useInterview();
 
     const [subject, setSubject] = useState('');
     const [bloomMode, setBloomMode] = useState('single');
     const [bloomLevel, setBloomLevel] = useState('L-1 - Remember');
     const [difficulty, setDifficulty] = useState('Medium');
     const [questionCount, setQuestionCount] = useState(5);
+    const [configError, setConfigError] = useState(null);
 
     const isFormValid = subject !== '';
+
+    // Map UI values to API payload values
+    const bloomLevelMap = {
+        'L-1 - Remember': 'L1',
+        'L-2 - Understand': 'L2',
+        'L-3 - Apply': 'L3',
+    };
+
+    const handleStartInterview = async () => {
+        setConfigError(null);
+        try {
+            const payload = {
+                student_id: user?.id || user?.email || 'anonymous',
+                subject: subject,
+                mode: bloomMode === 'single' ? 'single_bloom' : 'mixed_bloom',
+                bloom_level: bloomLevelMap[bloomLevel] || 'L1',
+                difficulty: difficulty.toLowerCase(),
+                num_questions: questionCount,
+                language: 'en',
+                bloom_strategy: 'fixed',
+            };
+
+            const sessionId = await start(payload);
+            navigate('/interview', { state: { sessionId, totalQuestions: questionCount } });
+        } catch (err) {
+            const message = err?.detail || err?.message || 'Failed to start interview';
+            setConfigError(typeof message === 'string' ? message : 'Failed to start interview');
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#dbeef9] via-[#e8f4fc] to-[#f0f8ff] flex items-center justify-center px-4 py-8">
@@ -30,6 +64,13 @@ const InterviewConfig = () => {
                         Customize your AI interview experience
                     </p>
                 </div>
+
+                {/* Error Message */}
+                {(configError || error) && (
+                    <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium text-center animate-pulse">
+                        {configError || error}
+                    </div>
+                )}
 
                 <div className="space-y-7">
 
@@ -234,15 +275,25 @@ const InterviewConfig = () => {
 
                     {/* CTA */}
                     <button
-                        onClick={() => navigate('/interview')}
-                        disabled={!isFormValid}
-                        className={`w-full py-4 rounded-2xl font-bold text-base shadow-xl transition-all duration-300
-                        ${isFormValid
+                        onClick={handleStartInterview}
+                        disabled={!isFormValid || loading}
+                        className={`w-full py-4 rounded-2xl font-bold text-base shadow-xl transition-all duration-300 flex items-center justify-center gap-2
+                        ${isFormValid && !loading
                                 ? 'bg-gradient-to-r from-[#003380] to-[#0056b3] hover:from-[#002260] hover:to-[#003d82] text-white hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]'
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                     >
-                        {isFormValid ? 'Start Interview →' : 'Please Select a Subject'}
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Starting Interview...
+                            </>
+                        ) : (
+                            isFormValid ? 'Start Interview →' : 'Please Select a Subject'
+                        )}
                     </button>
                 </div>
             </div>

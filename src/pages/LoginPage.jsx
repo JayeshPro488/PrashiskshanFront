@@ -1,39 +1,28 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import logoImg from '../assets/logo.png';
 import bgImg from '../assets/bg.png';
-import { Link, useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 
-export default function SignupPage() {
+export default function Login() {
     const [focusedField, setFocusedField] = useState(null);
     const [isHovering, setIsHovering] = useState(false);
-    const [formData, setFormData] = useState({
-        fullName: '',
-        email: '',
-        password: ''
-    });
+    const [credentials, setCredentials] = useState({ email: '', password: '' });
     const navigate = useNavigate();
+    const { login, loading, error } = useAuth();
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.id]: e.target.value });
+        setCredentials({ ...credentials, [e.target.id]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Mock Registration Logic
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const userExists = users.find(u => u.email === formData.email);
-
-        if (userExists) {
-            alert('User already exists with this email!');
-            return;
+        try {
+            await login(credentials.email, credentials.password);
+            navigate('/config');
+        } catch (err) {
+            // Error is already set in AuthContext
         }
-
-        const newUser = { ...formData };
-        users.push(newUser);
-        localStorage.setItem('users', JSON.stringify(users));
-
-        alert('Account created successfully! Please login.');
-        navigate('/');
     };
 
     return (
@@ -76,42 +65,19 @@ export default function SignupPage() {
                         </div>
 
                         <p className="text-slate-600 text-lg">
-                            Create your account
+                            Login to your account
                         </p>
                     </div>
 
-                    {/* Form */}
-                    <form className="space-y-5" onSubmit={handleSubmit}>
-                        {/* Full Name */}
-                        <div>
-                            <label
-                                htmlFor="fullName"
-                                className={`mb-1 block text-sm font-semibold text-left transition-all duration-300 ${focusedField === 'fullName'
-                                    ? 'text-[#003366]'
-                                    : 'text-[#003366]'
-                                    }`}
-                            >
-                                Full Name
-                            </label>
-
-                            <div className="relative">
-                                <input
-                                    id="fullName"
-                                    type="text"
-                                    required
-                                    placeholder="Enter your full name"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    onFocus={() => setFocusedField('fullName')}
-                                    onBlur={() => setFocusedField(null)}
-                                    className={`w-full rounded-xl py-3 px-5 shadow-lg ring-2 transition-all duration-300 placeholder:text-gray-400 ${focusedField === 'fullName'
-                                        ? 'bg-white ring-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.35)] scale-[1.02]'
-                                        : 'bg-white/70 ring-transparent hover:bg-white hover:shadow-xl'
-                                        }`}
-                                />
-                            </div>
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium text-center animate-pulse">
+                            {typeof error === 'string' ? error : 'Login failed. Please try again.'}
                         </div>
+                    )}
 
+                    {/* Form */}
+                    <form className="space-y-5" onSubmit={handleLogin}>
                         {/* Email */}
                         <div>
                             <label
@@ -130,7 +96,7 @@ export default function SignupPage() {
                                     type="email"
                                     required
                                     placeholder="Enter your email"
-                                    value={formData.email}
+                                    value={credentials.email}
                                     onChange={handleChange}
                                     onFocus={() => setFocusedField('email')}
                                     onBlur={() => setFocusedField(null)}
@@ -160,7 +126,7 @@ export default function SignupPage() {
                                     type="password"
                                     required
                                     placeholder="Enter password"
-                                    value={formData.password}
+                                    value={credentials.password}
                                     onChange={handleChange}
                                     onFocus={() => setFocusedField('password')}
                                     onBlur={() => setFocusedField(null)}
@@ -175,13 +141,29 @@ export default function SignupPage() {
                         {/* Button */}
                         <button
                             type="submit"
-                            className="group relative flex w-full justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#003366] via-blue-700 to-[#003366] px-4 py-3 text-base font-bold text-white shadow-[0_15px_50px_rgba(0,51,102,0.5)] transition-all duration-300 hover:shadow-[0_25px_70px_rgba(0,51,102,0.65)] active:scale-95"
+                            disabled={loading}
+                            className={`group relative flex w-full justify-center overflow-hidden rounded-xl px-4 py-3 text-base font-bold text-white shadow-[0_15px_50px_rgba(0,51,102,0.5)] transition-all duration-300 active:scale-95 ${loading
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-[#003366] via-blue-700 to-[#003366] hover:shadow-[0_25px_70px_rgba(0,51,102,0.65)]'
+                                }`}
                         >
                             <span className="relative z-10 flex items-center gap-2">
-                                Create Account
+                                {loading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Logging in...
+                                    </>
+                                ) : (
+                                    'Login'
+                                )}
                             </span>
 
-                            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                            {!loading && (
+                                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                            )}
                         </button>
                     </form>
 
@@ -193,6 +175,10 @@ export default function SignupPage() {
                     {/* Google Button */}
                     <button
                         type="button"
+                        onClick={() => {
+                            // Google Sign-In integration placeholder
+                            // Wire with Google Identity Services SDK to get id_token, then call googleAuth(id_token)
+                        }}
                         className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-slate-100 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all duration-300 hover:border-blue-100 hover:bg-slate-50 hover:shadow-md active:scale-95"
                     >
                         <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -216,25 +202,19 @@ export default function SignupPage() {
                         Continue with Google
                     </button>
 
-                    {/* Login Link */}
-                    <p className="mt-8 text-center text-sm font-medium text-slate-800">
-                        Already have a account?{' '}
+                    {/* Signup Link */}
+                    <p className="mt-12 text-center text-sm font-medium text-slate-800">
+                        Don't have an account?{' '}
                         <Link
-                            to="/"
+                            to="/signup"
                             className="font-bold text-[#003366] underline decoration-2 underline-offset-4 transition hover:text-blue-700"
                         >
-                            Login
+                            Sign up
                         </Link>
                     </p>
                 </div>
             </div>
 
-            <style jsx>{`
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-12px); }
-                }
-            `}</style>
         </div>
     );
 }
